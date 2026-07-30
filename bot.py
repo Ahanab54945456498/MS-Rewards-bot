@@ -1,8 +1,19 @@
 import asyncio
 import random
 import os
+import http.server
+import socketserver
+import threading
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
+
+# Render Web Service Port Binding
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        print(f"[+] Dummy Web Server listening on port {port}")
+        httpd.serve_forever()
 
 KEYWORDS = [
     "Latest technology news 2026", "Python Playwright tutorial", "ESP32 robotics ideas",
@@ -48,5 +59,6 @@ async def run_bot():
         await browser.close()
 
 if __name__ == "__main__":
+    # ব্যাকগ্রাউন্ডে ছোট ডামি পোর্ট রান রাখা যেন Render ফ্রি ওয়েবসর্ভিস বন্ধ না করে
+    threading.Thread(target=run_dummy_server, daemon=True).start()
     asyncio.run(run_bot())
-      
