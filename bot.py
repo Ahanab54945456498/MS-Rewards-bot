@@ -22,6 +22,9 @@ KEYWORDS = [
 ]
 
 async def run_bot():
+    email = os.environ.get("MS_EMAIL")
+    password = os.environ.get("MS_PASSWORD")
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
@@ -36,6 +39,34 @@ async def run_bot():
         page = await context.new_page()
         await stealth_async(page)
 
+        # ১. মাইক্রোসফট লগইন পেজে যাওয়া
+        if email and password:
+            print("[+] Logging into Microsoft Account...")
+            try:
+                await page.goto("https://login.live.com")
+                await asyncio.sleep(3)
+                
+                # Email Input
+                await page.fill('input[type="email"]', email)
+                await page.click('input[type="submit"]')
+                await asyncio.sleep(3)
+                
+                # Password Input
+                await page.fill('input[type="password"]', password)
+                await page.click('input[type="submit"]')
+                await asyncio.sleep(4)
+                
+                # "Stay signed in?" prompt handle
+                try:
+                    await page.click('input[id="idSIButton9"]', timeout=5000)
+                except:
+                    pass
+                
+                print("[+] Login Successful!")
+            except Exception as e:
+                print(f"[-] Login failed: {e}")
+
+        # ২. সার্চ শুরু করা
         print("[+] Navigating to Bing...")
         await page.goto("https://www.bing.com")
         await asyncio.sleep(5)
@@ -59,6 +90,5 @@ async def run_bot():
         await browser.close()
 
 if __name__ == "__main__":
-    # ব্যাকগ্রাউন্ডে ছোট ডামি পোর্ট রান রাখা যেন Render ফ্রি ওয়েবসর্ভিস বন্ধ না করে
     threading.Thread(target=run_dummy_server, daemon=True).start()
     asyncio.run(run_bot())
