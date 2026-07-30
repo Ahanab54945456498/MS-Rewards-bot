@@ -7,7 +7,6 @@ import threading
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
 
-# Render Web Service Port Binding
 def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     handler = http.server.SimpleHTTPRequestHandler
@@ -39,57 +38,50 @@ async def run_bot():
         page = await context.new_page()
         await stealth_async(page)
 
-        # ১. মাইক্রোসফট লগইন পেজে যাওয়া
+        # ১. লগইন প্রসেস
         if email and password:
             print("[+] Logging into Microsoft Account...")
             try:
-                await page.goto("https://login.live.com")
-                await asyncio.sleep(3)
+                await page.goto("https://login.live.com", wait_until="networkidle")
+                await asyncio.sleep(2)
                 
-                # Email Input
                 await page.fill('input[type="email"]', email)
                 await page.click('input[type="submit"]')
                 await asyncio.sleep(3)
                 
-                # Password Input
                 await page.fill('input[type="password"]', password)
                 await page.click('input[type="submit"]')
                 await asyncio.sleep(4)
                 
-                # "Stay signed in?" prompt handle
                 try:
-                    await page.click('input[id="idSIButton9"]', timeout=5000)
+                    await page.click('input[id="idSIButton9"]', timeout=4000)
                 except:
                     pass
                 
-                print("[+] Login Attempt Completed!")
+                print("[+] Login Step Completed!")
             except Exception as e:
-                print(f"[-] Login failed: {e}")
+                print(f"[-] Login step skipped/failed: {e}")
 
-        # ২. সার্চ শুরু করা
-        print("[+] Navigating to Bing...")
-        await page.goto("https://www.bing.com")
-        await asyncio.sleep(5)
-
+        # ২. সরাসরি সার্চ ইউআরএল দিয়ে পয়েন্ট কালেকশন (যাতে টাইমাউট না হয়)
+        print("[+] Starting Bing Searches...")
         random.shuffle(KEYWORDS)
+        
         for i, word in enumerate(KEYWORDS[:10]):
             print(f"[{i+1}/10] Searching: '{word}'")
             try:
-                search_box = await page.wait_for_selector('textarea[name="q"]', timeout=10000)
-                await search_box.fill("")
-                await search_box.type(word, delay=random.randint(120, 220))
-                await search_box.press("Enter")
+                # সরাসরি Bing Search URL এ যাওয়া (কোনো বক্সে ক্লিক করার ঝামেলা নেই)
+                search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
+                await page.goto(search_url, wait_until="domcontentloaded")
                 
                 delay = random.randint(8, 15)
                 print(f"    Waiting {delay}s...")
                 await asyncio.sleep(delay)
             except Exception as e:
-                print(f"[-] Search failed: {e}")
+                print(f"[-] Search error: {e}")
 
         print("[+] Automation Completed Successfully!")
         await browser.close()
 
 if __name__ == "__main__":
-    # ডামি সার্ভার মূল থ্রেডে অন রাখা যাতে প্রসেস বন্ধ না হয়ে সার্ভার লাইভ থাকে
     threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
     run_dummy_server()
