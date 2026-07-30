@@ -62,7 +62,7 @@ async def run_bot():
                 except:
                     pass
                 
-                print("[+] Login Successful!")
+                print("[+] Login Attempt Completed!")
             except Exception as e:
                 print(f"[-] Login failed: {e}")
 
@@ -90,5 +90,6 @@ async def run_bot():
         await browser.close()
 
 if __name__ == "__main__":
-    threading.Thread(target=run_dummy_server, daemon=True).start()
-    asyncio.run(run_bot())
+    # ডামি সার্ভার মূল থ্রেডে অন রাখা যাতে প্রসেস বন্ধ না হয়ে সার্ভার লাইভ থাকে
+    threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
+    run_dummy_server()
