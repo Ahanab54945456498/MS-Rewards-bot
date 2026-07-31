@@ -4,18 +4,15 @@ import os
 import http.server
 import socketserver
 import threading
-import sys
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
 
-# ১. কি-ওয়ার্ড লিস্ট
 KEYWORDS = [
     "Latest technology news 2026", "Python Playwright tutorial", "ESP32 robotics ideas",
     "Cricket world cup updates", "Best budget laptops", "AI development trends",
     "SpaceX launch schedule", "Web automation tips", "Arduino home automation"
 ]
 
-# ২. ডামি সার্ভার (Render এর জন্য)
 def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -29,45 +26,52 @@ def run_dummy_server():
     except Exception as e:
         print(f"[-] Server Error: {e}", flush=True)
 
-# ৩. মেইন অটোমেশন লজিক
 async def run_bot():
     print("[+] Starting Rewards Automation Bot...", flush=True)
     
-    email = "nasibahanab@gmail.com"
+    email = "Nasibahanab@gmail.com"
     password = "9414Nasib"
 
     async with async_playwright() as p:
         try:
-            print("[+] Launching Firefox Browser (Anti-Block Mode)...", flush=True)
-            # Firefox ব্যবহার করায় Microsoft-এর বোট ডিটেক্টর ব্লক করবে না
-            browser = await p.firefox.launch(
+            print("[+] Launching Chromium Browser...", flush=True)
+            browser = await p.chromium.launch(
                 headless=True,
-                args=['--no-sandbox']
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-blink-features=AutomationControlled'
+                ]
             )
             
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 viewport={'width': 1366, 'height': 768}
             )
             
             page = await context.new_page()
+            await stealth_async(page)
 
-            # --- স্টেপ ১: লগইন হ্যান্ডলিং ---
-            print(f"[+] Attempting Login for: {email}", flush=True)
+            # --- স্টেপ ১: ফাস্ট লগইন প্রসেস ---
+            print(f"[+] Navigating to Bing Login: {email}", flush=True)
             try:
-                # domcontentloaded দিয়ে অতি দ্রুত লোড নেওয়া
-                await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=30000)
+                # সরাসরি Bing-এর লগইন ইউআরএলে হিট করা
+                login_url = "https://login.live.com/login.srf?wa=wsignin1.0&rpsnv=13&ct=1&rver=6.7.6643.0&wp=MBI_SSL&wreply=https%3a%2f%2fwww.bing.com%2f"
+                await page.goto(login_url, wait_until="commit", timeout=20000)
                 await asyncio.sleep(2)
 
-                # ইমেইল
-                await page.fill('input[type="email"]', email)
-                await page.click('input[type="submit"]')
-                await asyncio.sleep(3)
+                # ইমেইল ইনপুট
+                if await page.query_selector('input[type="email"]'):
+                    await page.fill('input[type="email"]', email)
+                    await page.click('input[type="submit"]')
+                    await asyncio.sleep(3)
 
-                # পাসওয়ার্ড
-                await page.fill('input[type="password"]', password)
-                await page.click('input[type="submit"]')
-                await asyncio.sleep(4)
+                # পাসওয়ার্ড ইনপুট
+                if await page.query_selector('input[type="password"]'):
+                    await page.fill('input[type="password"]', password)
+                    await page.click('input[type="submit"]')
+                    await asyncio.sleep(3)
 
                 # Stay signed in?
                 try:
@@ -75,9 +79,9 @@ async def run_bot():
                 except:
                     pass
 
-                print("[+] Login sequence completed!", flush=True)
+                print("[+] Login Step Finished!", flush=True)
             except Exception as e:
-                print(f"[-] Login step skipped/failed: {e}", flush=True)
+                print(f"[-] Login skipped or failed: {e}", flush=True)
 
             # --- স্টেপ ২: সার্চ অ্যান্ড পয়েন্ট কালেকশন ---
             print("[+] Starting Bing Searches...", flush=True)
@@ -89,7 +93,7 @@ async def run_bot():
                 print(f"[{i+1}/10] Searching: '{word}'", flush=True)
                 try:
                     search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
-                    await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
+                    await page.goto(search_url, wait_until="commit", timeout=12000)
 
                     delay = random.randint(6, 10)
                     print(f"    Waiting {delay} seconds...", flush=True)
@@ -101,7 +105,7 @@ async def run_bot():
             print(f"[+] Task Finished! Successfully completed {success_count}/10 searches.", flush=True)
 
         except Exception as global_error:
-            print(f"[-] Critical Error during automation: {global_error}", flush=True)
+            print(f"[-] Critical Error: {global_error}", flush=True)
         finally:
             try:
                 await browser.close()
