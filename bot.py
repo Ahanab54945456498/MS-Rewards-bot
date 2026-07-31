@@ -15,7 +15,7 @@ KEYWORDS = [
     "SpaceX launch schedule", "Web automation tips", "Arduino home automation"
 ]
 
-# ২. ডামি সার্ভার ফাংশন (Render Port Binding এর জন্য)
+# ২. ডামি সার্ভার (Render এর জন্য)
 def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -33,64 +33,54 @@ def run_dummy_server():
 async def run_bot():
     print("[+] Starting Rewards Automation Bot...", flush=True)
     
-    # সরাসরি কোডের ভেতর ইমেইল ও পাসওয়ার্ড
     email = "nasibahanab@gmail.com"
     password = "9414Nasib"
 
     async with async_playwright() as p:
         try:
-            print("[+] Launching Chromium Browser...", flush=True)
-            browser = await p.chromium.launch(
+            print("[+] Launching Firefox Browser (Anti-Block Mode)...", flush=True)
+            # Firefox ব্যবহার করায় Microsoft-এর বোট ডিটেক্টর ব্লক করবে না
+            browser = await p.firefox.launch(
                 headless=True,
-                args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled'
-                ]
+                args=['--no-sandbox']
             )
             
             context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
                 viewport={'width': 1366, 'height': 768}
             )
             
             page = await context.new_page()
-            await stealth_async(page)
 
             # --- স্টেপ ১: লগইন হ্যান্ডলিং ---
-            if email and password:
-                print(f"[+] Attempting Login for: {email}", flush=True)
+            print(f"[+] Attempting Login for: {email}", flush=True)
+            try:
+                # domcontentloaded দিয়ে অতি দ্রুত লোড নেওয়া
+                await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=30000)
+                await asyncio.sleep(2)
+
+                # ইমেইল
+                await page.fill('input[type="email"]', email)
+                await page.click('input[type="submit"]')
+                await asyncio.sleep(3)
+
+                # পাসওয়ার্ড
+                await page.fill('input[type="password"]', password)
+                await page.click('input[type="submit"]')
+                await asyncio.sleep(4)
+
+                # Stay signed in?
                 try:
-                    page.set_default_timeout(60000)
-                    await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=60000)
-                    await asyncio.sleep(3)
+                    await page.click('input[id="idSIButton9"]', timeout=3000)
+                except:
+                    pass
 
-                    # ইমেইল ইনপুট
-                    await page.wait_for_selector('input[type="email"]', timeout=30000)
-                    await page.fill('input[type="email"]', email)
-                    await page.click('input[type="submit"]')
-                    await asyncio.sleep(4)
-
-                    # পাসওয়ার্ড ইনপুট
-                    await page.wait_for_selector('input[type="password"]', timeout=30000)
-                    await page.fill('input[type="password"]', password)
-                    await page.click('input[type="submit"]')
-                    await asyncio.sleep(5)
-
-                    # Stay signed in? পপ-আপ
-                    try:
-                        await page.click('input[id="idSIButton9"]', timeout=5000)
-                    except:
-                        pass
-
-                    print("[+] Login sequence completed successfully!", flush=True)
-                except Exception as e:
-                    print(f"[-] Login encountered an issue (Continuing anyway): {e}", flush=True)
+                print("[+] Login sequence completed!", flush=True)
+            except Exception as e:
+                print(f"[-] Login step skipped/failed: {e}", flush=True)
 
             # --- স্টেপ ২: সার্চ অ্যান্ড পয়েন্ট কালেকশন ---
             print("[+] Starting Bing Searches...", flush=True)
-            page.set_default_timeout(20000)
             search_keywords = KEYWORDS.copy()
             random.shuffle(search_keywords)
 
@@ -99,9 +89,9 @@ async def run_bot():
                 print(f"[{i+1}/10] Searching: '{word}'", flush=True)
                 try:
                     search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
-                    await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
+                    await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
 
-                    delay = random.randint(8, 14)
+                    delay = random.randint(6, 10)
                     print(f"    Waiting {delay} seconds...", flush=True)
                     await asyncio.sleep(delay)
                     success_count += 1
