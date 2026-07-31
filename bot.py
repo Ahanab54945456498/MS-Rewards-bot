@@ -3,16 +3,8 @@ import random
 import os
 import http.server
 import socketserver
-import threading
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
-
-def run_dummy_server():
-    port = int(os.environ.get("PORT", 10000))
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        print(f"[+] Dummy Web Server listening on port {port}")
-        httpd.serve_forever()
 
 KEYWORDS = [
     "Latest technology news 2026", "Python Playwright tutorial", "ESP32 robotics ideas",
@@ -20,10 +12,18 @@ KEYWORDS = [
     "SpaceX launch schedule", "Web automation tips", "Arduino home automation"
 ]
 
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    print(f"[+] Starting Dummy Web Server on port {port} to keep Render live...")
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        httpd.serve_forever()
+
 async def run_bot():
     email = os.environ.get("MS_EMAIL")
     password = os.environ.get("MS_PASSWORD")
 
+    print("[+] Launching Browser...")
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
@@ -40,7 +40,7 @@ async def run_bot():
 
         # ১. লগইন প্রসেস
         if email and password:
-            print("[+] Logging into Microsoft Account...")
+            print(f"[+] Logging in as: {email}")
             try:
                 await page.goto("https://login.live.com", wait_until="networkidle")
                 await asyncio.sleep(2)
@@ -61,27 +61,31 @@ async def run_bot():
                 print("[+] Login Step Completed!")
             except Exception as e:
                 print(f"[-] Login step skipped/failed: {e}")
+        else:
+            print("[-] Warning: MS_EMAIL or MS_PASSWORD environment variables not found!")
 
-        # ২. সরাসরি সার্চ ইউআরএল দিয়ে পয়েন্ট কালেকশন (যাতে টাইমাউট না হয়)
+        # ২. সরাসরি সার্চ ইউআরএল দিয়ে পয়েন্ট কালেকশন
         print("[+] Starting Bing Searches...")
         random.shuffle(KEYWORDS)
         
         for i, word in enumerate(KEYWORDS[:10]):
             print(f"[{i+1}/10] Searching: '{word}'")
             try:
-                # সরাসরি Bing Search URL এ যাওয়া (কোনো বক্সে ক্লিক করার ঝামেলা নেই)
                 search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
                 await page.goto(search_url, wait_until="domcontentloaded")
                 
                 delay = random.randint(8, 15)
-                print(f"    Waiting {delay}s...")
+                print(f"    Waiting {delay} seconds...")
                 await asyncio.sleep(delay)
             except Exception as e:
                 print(f"[-] Search error: {e}")
 
-        print("[+] Automation Completed Successfully!")
+        print("[+] All 10 Searches Completed Successfully!")
         await browser.close()
 
 if __name__ == "__main__":
-    threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
+    # ১. আগে ব্যাকগ্রাউন্ড অটোমেশন রান হবে
+    asyncio.run(run_bot())
+    
+    # ২. অটোমেশন শেষ হলে সার্ভার চালু হয়ে সার্ভিসকে অন রাখবে
     run_dummy_server()
