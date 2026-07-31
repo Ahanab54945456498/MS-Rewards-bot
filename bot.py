@@ -33,8 +33,8 @@ def run_dummy_server():
 async def run_bot():
     print("[+] Starting Rewards Automation Bot...", flush=True)
     
-    email = os.environ.get("MS_EMAIL")
-    password = os.environ.get("MS_PASSWORD")
+    email = os.environ.get("nasibahanab@gmail.com")
+    password = os.environ.get("9414Nasib")
 
     if not email or not password:
         print("[-] WARNING: Environment variables MS_EMAIL or MS_PASSWORD are missing!", flush=True)
