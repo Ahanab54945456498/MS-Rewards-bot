@@ -274,7 +274,7 @@ def run_dummy_server():
         print(f"[-] Server Error: {e}", flush=True)
 
 async def run_bot():
-    print("[+] Starting Rewards Automation Bot (Human Interaction Mode)...", flush=True)
+    print("[+] Starting Rewards Automation Bot (Optimized Timeout)...", flush=True)
 
     async with async_playwright() as p:
         try:
@@ -289,7 +289,6 @@ async def run_bot():
                 ]
             )
             
-            # মোবাইল ইউজার এজেন্টের জায়গায় পিসি ডিফল্ট ব্রাউজার উইন্ডো
             context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 viewport={'width': 1366, 'height': 768}
@@ -300,40 +299,35 @@ async def run_bot():
             
             page = await context.new_page()
 
-            # ১. Bing-এ যাওয়া
+            # ১. Bing-এ যাওয়া (Timeout বাড়িয়ে ৬০ সেকেন্ড করা হয়েছে)
             print("[+] Navigating to Bing Main Page...", flush=True)
-            await page.goto("https://www.bing.com", wait_until="networkidle", timeout=20000)
-            await asyncio.sleep(3)
+            try:
+                await page.goto("https://www.bing.com", wait_until="domcontentloaded", timeout=60000)
+            except Exception as e:
+                print(f"[-] Initial load slow, proceeding anyway: {e}", flush=True)
+                
+            await asyncio.sleep(4)
 
-            # ২. সার্চ লুপ (Human-like Interaction)
+            # ২. সার্চ লুপ
             search_keywords = KEYWORDS.copy()
             random.shuffle(search_keywords)
 
             success_count = 0
-            for i, word in enumerate(search_keywords[:6]): # ৬টি করে সার্চ
+            for i, word in enumerate(search_keywords[:6]):
                 print(f"[{i+1}/6] Human Searching: '{word}'", flush=True)
                 try:
-                    # সার্চ বক্সে রিয়েল টাইপিং
-                    search_box = await page.wait_for_selector('textarea[name="q"], input[name="q"]', timeout=10000)
-                    await search_box.fill("")
-                    await search_box.type(word, delay=100) # মানুষের মতো টাইপিং স্পিড
-                    await search_box.press("Enter")
-                    
-                    # পেজ লোডের জন্য অপেক্ষা
-                    await page.wait_for_load_state("domcontentloaded")
+                    search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
+                    await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
 
-                    # Cooldown Bypass: ২০ থেকে ৩৫ সেকেন্ড বিরতি (খুব জরুরি)
-                    delay = random.randint(20, 35)
-                    print(f"    Waiting {delay} seconds for Bing Cooldown...", flush=True)
+                    # Cooldown Delay
+                    delay = random.randint(18, 25)
+                    print(f"    Waiting {delay} seconds for Rewards Cooldown...", flush=True)
                     await asyncio.sleep(delay)
                     success_count += 1
                 except Exception as e:
                     print(f"    [-] Search error on '{word}': {e}", flush=True)
-                    # ব্যাকআপ ডাইরেক্ট ইউআরএল হিট
-                    await page.goto(f"https://www.bing.com/search?q={word.replace(' ', '+')}", wait_until="domcontentloaded")
-                    await asyncio.sleep(20)
 
-            print(f"[+] Task Finished! Completed {success_count} searches with Human Delay.", flush=True)
+            print(f"[+] Task Finished! Completed {success_count} searches.", flush=True)
 
         except Exception as global_error:
             print(f"[-] Critical Error: {global_error}", flush=True)
