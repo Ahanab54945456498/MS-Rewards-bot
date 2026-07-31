@@ -6,7 +6,6 @@ import socketserver
 import threading
 from playwright.async_api import async_playwright
 
-# ১. আপনার প্রদান করা কুকি লিস্ট
 COOKIES = [
     {
         "name": "SRCHUSR",
@@ -255,14 +254,12 @@ COOKIES = [
     }
 ]
 
-# ২. কি-ওয়ার্ড লিস্ট
 KEYWORDS = [
     "Latest technology news 2026", "Python Playwright tutorial", "ESP32 robotics ideas",
     "Cricket world cup updates", "Best budget laptops", "AI development trends",
-    "SpaceX launch schedule", "Web automation tips", "Arduino home automation"
+    "SpaceX launch schedule", "Web automation tips", "Arduino home automation", "How to make a split"
 ]
 
-# ৩. ডামি সার্ভার (Render এর জন্য)
 def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -276,9 +273,8 @@ def run_dummy_server():
     except Exception as e:
         print(f"[-] Server Error: {e}", flush=True)
 
-# ৪. মেইন অটোমেশন লজিক
 async def run_bot():
-    print("[+] Starting Rewards Automation Bot (Cookie Mode)...", flush=True)
+    print("[+] Starting Rewards Automation Bot (Human Interaction Mode)...", flush=True)
 
     async with async_playwright() as p:
         try:
@@ -293,43 +289,51 @@ async def run_bot():
                 ]
             )
             
+            # মোবাইল ইউজার এজেন্টের জায়গায় পিসি ডিফল্ট ব্রাউজার উইন্ডো
             context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 viewport={'width': 1366, 'height': 768}
             )
             
-            # কুকি ইনজেক্ট করা
             print("[+] Injecting Authentication Cookies...", flush=True)
             await context.add_cookies(COOKIES)
             
             page = await context.new_page()
 
-            # --- স্টেপ ১: সেটিং সেশন ---
-            print("[+] Verifying Logged-in Session on Bing...", flush=True)
-            await page.goto("https://www.bing.com", wait_until="commit", timeout=15000)
-            await asyncio.sleep(2)
-            print("[+] Cookie Session Injected Successfully!", flush=True)
+            # ১. Bing-এ যাওয়া
+            print("[+] Navigating to Bing Main Page...", flush=True)
+            await page.goto("https://www.bing.com", wait_until="networkidle", timeout=20000)
+            await asyncio.sleep(3)
 
-            # --- স্টেপ ২: সার্চ অ্যান্ড পয়েন্ট কালেকশন ---
-            print("[+] Starting Bing Searches...", flush=True)
+            # ২. সার্চ লুপ (Human-like Interaction)
             search_keywords = KEYWORDS.copy()
             random.shuffle(search_keywords)
 
             success_count = 0
-            for i, word in enumerate(search_keywords[:10]):
-                print(f"[{i+1}/10] Searching: '{word}'", flush=True)
+            for i, word in enumerate(search_keywords[:6]): # ৬টি করে সার্চ
+                print(f"[{i+1}/6] Human Searching: '{word}'", flush=True)
                 try:
-                    search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
-                    await page.goto(search_url, wait_until="commit", timeout=12000)
+                    # সার্চ বক্সে রিয়েল টাইপিং
+                    search_box = await page.wait_for_selector('textarea[name="q"], input[name="q"]', timeout=10000)
+                    await search_box.fill("")
+                    await search_box.type(word, delay=100) # মানুষের মতো টাইপিং স্পিড
+                    await search_box.press("Enter")
+                    
+                    # পেজ লোডের জন্য অপেক্ষা
+                    await page.wait_for_load_state("domcontentloaded")
 
-                    delay = random.randint(6, 10)
-                    print(f"    Waiting {delay} seconds...", flush=True)
+                    # Cooldown Bypass: ২০ থেকে ৩৫ সেকেন্ড বিরতি (খুব জরুরি)
+                    delay = random.randint(20, 35)
+                    print(f"    Waiting {delay} seconds for Bing Cooldown...", flush=True)
                     await asyncio.sleep(delay)
                     success_count += 1
                 except Exception as e:
                     print(f"    [-] Search error on '{word}': {e}", flush=True)
+                    # ব্যাকআপ ডাইরেক্ট ইউআরএল হিট
+                    await page.goto(f"https://www.bing.com/search?q={word.replace(' ', '+')}", wait_until="domcontentloaded")
+                    await asyncio.sleep(20)
 
-            print(f"[+] Task Finished! Successfully completed {success_count}/10 searches.", flush=True)
+            print(f"[+] Task Finished! Completed {success_count} searches with Human Delay.", flush=True)
 
         except Exception as global_error:
             print(f"[-] Critical Error: {global_error}", flush=True)
