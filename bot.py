@@ -33,11 +33,9 @@ def run_dummy_server():
 async def run_bot():
     print("[+] Starting Rewards Automation Bot...", flush=True)
     
-    email = os.environ.get("nasibahanab@gmail.com")
-    password = os.environ.get("9414Nasib")
-
-    if not email or not password:
-        print("[-] WARNING: Environment variables MS_EMAIL or MS_PASSWORD are missing!", flush=True)
+    # সরাসরি কোডের ভেতর ইমেইল ও পাসওয়ার্ড
+    email = "nasibahanab@gmail.com"
+    password = "9414Nasib"
 
     async with async_playwright() as p:
         try:
@@ -59,13 +57,12 @@ async def run_bot():
             
             page = await context.new_page()
             await stealth_async(page)
-            page.set_default_timeout(20000)
 
-            # --- স্টেপ ১: লগইন হ্যান্ডলিং (টাইমাউট বাড়িয়ে ৬০ সেকেন্ড করা হয়েছে) ---
+            # --- স্টেপ ১: লগইন হ্যান্ডলিং ---
             if email and password:
                 print(f"[+] Attempting Login for: {email}", flush=True)
                 try:
-                    # ৬০ সেকেন্ড টাইমাউট যাতে স্লো নেটওয়ার্কেও লোড হতে পারে
+                    page.set_default_timeout(60000)
                     await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=60000)
                     await asyncio.sleep(3)
 
@@ -81,7 +78,7 @@ async def run_bot():
                     await page.click('input[type="submit"]')
                     await asyncio.sleep(5)
 
-                    # "Stay signed in?" এর পপ-আপ হ্যান্ডলিং
+                    # Stay signed in? পপ-আপ
                     try:
                         await page.click('input[id="idSIButton9"]', timeout=5000)
                     except:
@@ -93,6 +90,7 @@ async def run_bot():
 
             # --- স্টেপ ২: সার্চ অ্যান্ড পয়েন্ট কালেকশন ---
             print("[+] Starting Bing Searches...", flush=True)
+            page.set_default_timeout(20000)
             search_keywords = KEYWORDS.copy()
             random.shuffle(search_keywords)
 
