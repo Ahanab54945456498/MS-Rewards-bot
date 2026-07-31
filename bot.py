@@ -20,7 +20,6 @@ def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, format, *args):
-            # স্প্যাম লগার বন্ধ করার জন্য
             return
 
     try:
@@ -60,32 +59,35 @@ async def run_bot():
             
             page = await context.new_page()
             await stealth_async(page)
-            page.set_default_timeout(15000) # ১৫ সেকেন্ড অটোমেটিক টাইমাউট
+            page.set_default_timeout(20000)
 
-            # --- স্টেপ ১: লগইন হ্যান্ডলিং ---
+            # --- স্টেপ ১: লগইন হ্যান্ডলিং (টাইমাউট বাড়িয়ে ৬০ সেকেন্ড করা হয়েছে) ---
             if email and password:
                 print(f"[+] Attempting Login for: {email}", flush=True)
                 try:
-                    await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=20000)
-                    await asyncio.sleep(2)
-
-                    # ইমেইল ইনপুট
-                    await page.fill('input[type="email"]', email)
-                    await page.click('input[type="submit"]')
+                    # ৬০ সেকেন্ড টাইমাউট যাতে স্লো নেটওয়ার্কেও লোড হতে পারে
+                    await page.goto("https://login.live.com", wait_until="domcontentloaded", timeout=60000)
                     await asyncio.sleep(3)
 
-                    # পাসওয়ার্ড ইনপুট
-                    await page.fill('input[type="password"]', password)
+                    # ইমেইল ইনপুট
+                    await page.wait_for_selector('input[type="email"]', timeout=30000)
+                    await page.fill('input[type="email"]', email)
                     await page.click('input[type="submit"]')
                     await asyncio.sleep(4)
 
+                    # পাসওয়ার্ড ইনপুট
+                    await page.wait_for_selector('input[type="password"]', timeout=30000)
+                    await page.fill('input[type="password"]', password)
+                    await page.click('input[type="submit"]')
+                    await asyncio.sleep(5)
+
                     # "Stay signed in?" এর পপ-আপ হ্যান্ডলিং
                     try:
-                        await page.click('input[id="idSIButton9"]', timeout=3000)
+                        await page.click('input[id="idSIButton9"]', timeout=5000)
                     except:
                         pass
 
-                    print("[+] Login sequence completed!", flush=True)
+                    print("[+] Login sequence completed successfully!", flush=True)
                 except Exception as e:
                     print(f"[-] Login encountered an issue (Continuing anyway): {e}", flush=True)
 
@@ -98,11 +100,9 @@ async def run_bot():
             for i, word in enumerate(search_keywords[:10]):
                 print(f"[{i+1}/10] Searching: '{word}'", flush=True)
                 try:
-                    # ইউআরএল সরাসরি নেভিগেট করা (ইনপুট বক্সে না টাইপ করে)
                     search_url = f"https://www.bing.com/search?q={word.replace(' ', '+')}"
-                    await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
+                    await page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
 
-                    # র‍্যান্ডম ডিলে দেওয়া যাতে বট ডিটেক্ট না করে
                     delay = random.randint(8, 14)
                     print(f"    Waiting {delay} seconds...", flush=True)
                     await asyncio.sleep(delay)
@@ -122,15 +122,12 @@ async def run_bot():
                 pass
 
 def start_bot_thread():
-    # ২ সেকেন্ড বিরতি দিয়ে ব্যাকগ্রাউন্ড থ্রেডে বটের কাজ শুরু করা
     import time
     time.sleep(2)
     asyncio.run(run_bot())
 
 if __name__ == "__main__":
-    # ১. ব্যাকগ্রাউন্ড থ্রেডে বট চালু
     bot_thread = threading.Thread(target=start_bot_thread, daemon=True)
     bot_thread.start()
 
-    # ২. মূল থ্রেডে সার্ভার সচল রাখা
     run_dummy_server()
